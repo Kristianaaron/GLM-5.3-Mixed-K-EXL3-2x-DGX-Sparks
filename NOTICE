@@ -1,0 +1,19 @@
+NOTICE
+
+GLM-5.3 full on two NVIDIA DGX Sparks with TensorFold's native engine.
+Copyright 2026 Mia's AI Lab (MiaAI-Lab). Licensed under the Apache License, Version 2.0.
+
+This repository adapts the Docker image build and link discovery from
+MiaAI-Lab/GLM-5.3-Flash-DGX-Sparks-1104, an Apache-2.0 recipe. Changes made
+for this adaptation: the image builds from a local TensorFold checkout without
+applying engine patches or adding vision codecs; the build includes the GLM-5.3
+native targets and xgrammar v0.2.8; and link discovery is integrated into this
+launcher for its two ranks, with environment overrides.
+
+The `scripts/memavail.sh` helper, preflight checks, memory guard rule, and
+readiness smoke test are adapted from
+MiaAI-Lab/GLM-5.3-Flash-DGX-Sparks-1104, licensed under Apache-2.0.
+
+The Apache License, Version 2.0 applies to the adapted recipe material. It does
+not change the license or terms of TensorFold, model weights, xgrammar, or other
+third-party work included or downloaded separately.
