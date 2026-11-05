@@ -20,7 +20,13 @@ Tested on one DGX Spark Founders Edition with one ASUS Ascent GX10. Other setups
 
 ## Build the engine
 
-Build the container from the local engine checkout in `ENGINE_DIR` and transfer it to rank 1:
+Clone the engine on rank 0 and point `ENGINE_DIR` at it. Rank 1 only needs the image.
+
+```sh
+git clone -b glm-5.3-2x-sparks https://github.com/Kristianaaron/TensorFold
+```
+
+Build the container from that checkout and transfer it to rank 1:
 
 ```sh
 ./run.sh image
