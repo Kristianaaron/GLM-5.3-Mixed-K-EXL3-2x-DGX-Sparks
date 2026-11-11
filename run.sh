@@ -66,15 +66,44 @@ DOCKER_ARGS+=(
   -e NCCL_NVLS_ENABLE=0
 )
 
+# Speed switches added after the first release. Most keep the output bits exactly.
+# Five change bits slightly, inside a measured quality budget (see "Prefill speed switches" in the README):
+#   MOE_EP=1        expert-parallel routed experts (each rank holds 128 whole experts)
+#   PREFILL_W8A8=2  8-bit weights and activations for the dense prefill projections
+#   GU_W8S=2        8-bit activations for the routed experts' prefill gate/up (one scale a row)
+#   DOWN_W8S=1      8-bit activations for the routed experts' prefill down (one scale a row)
+# ROT_W4, GU_MB and W8_M64 are same-output kernel changes.
+DOCKER_ARGS+=(
+  -e TF_GLM53_MOE_NOALLOC=1
+  -e TF_GLM53_RING_KEEP=1
+  -e TF_GLM53_DECODE_MLA16=1
+  -e TF_GLM53_DRAFT_GUMBEL=1
+  -e TF_GLM53_CAND_FAST=1
+  -e TF_GLM53_ROUTE_COMPACT=1
+  -e TF_GLM53_QA_SHARD=1
+  -e TF_GLM53_L2PF=1
+  -e TF_GLM53_INDEX_QS=5
+  -e TF_GLM53_MOE_RING=8
+  -e TF_GLM53_QMMF_VAR=1
+  -e TF_GLM53_GATHER_OVL=1
+  -e TF_GLM53_MOE_EP=1
+  -e TF_GLM53_PREFILL_W8A8=2
+  -e TF_GLM53_ROT_W4=1
+  -e TF_GLM53_GU_MB=1
+  -e TF_GLM53_W8_M64=1
+  -e TF_GLM53_GU_W8S=2
+  -e TF_GLM53_DOWN_W8S=1
+)
+
 # GLM-5.3 runtime, cache, and serving environment from the release environment.
 DOCKER_ARGS+=(
-  -e TF_GLM53_PROMPT_MLA=2
+  -e TF_GLM53_PROMPT_MLA=3
   -e TF_GLM53_SMLA_P=1
   -e TF_GLM53_SIDE=1
   -e TF_GLM53_SCRATCH_OVERLAY=1
   -e TF_GLM53_INDEX_ROWS=16
   -e TF_GLM53_PIECE_PIPE=1
-  -e TF_GLM53_CHUNK_ROWS=2048
+  -e TF_GLM53_CHUNK_ROWS=4096
   -e TF_GLM53_RUNTIME_RESERVE_MIB=2560
   -e TF_GLM53_GRAPH_MIB=32
   -e TF_GLM53_DRAFTER_SHARE=1
@@ -91,7 +120,7 @@ DOCKER_ARGS+=(
   -e TF_GLM53_PREP_FUSE=1
   -e TF_GLM53_MOE_POST=1
   -e "TF_ROCE=$ROCE"
-  -e TF_GLM53_EXPERT_ROWS_ADAPT=2048
+  -e TF_GLM53_EXPERT_ROWS_ADAPT=4096
   -e TF_GLM53_DRAFT_CHANCES=1
   -e TF_GLM53_GRAPH_BUDGET_MIB=1024
   -e TF_GLM53_SERVE_MARGIN_MIB=512
@@ -413,6 +442,10 @@ start() {
     [[ -n "$hca0" && -n "$hca1" ]] || { printf 'No active RDMA device for RoCE. Set ROCE=0 in .env to use NCCL.\n' >&2; return 1; }
     rank0_link_args+=(-e TF_GLM53_COLLECTIVE=roce -e "TF_ROCE_HCA=$hca0")
     rank1_link_args+=(-e TF_GLM53_COLLECTIVE=roce -e "TF_ROCE_HCA=$hca1")
+    # These three switches move decode and prefill attention gathers onto RoCE and need it.
+    local roce_only=(-e TF_GLM53_OWN_ATTEND=1 -e TF_GLM53_Q_ONE_GATHER=1 -e TF_GLM53_PARTIAL_ROCE=1)
+    rank0_link_args+=("${roce_only[@]}")
+    rank1_link_args+=("${roce_only[@]}")
   fi
   RUNTIME_IMAGE=$(image_hash_tag)
   if [[ "$DRY_RUN" == 1 ]]; then

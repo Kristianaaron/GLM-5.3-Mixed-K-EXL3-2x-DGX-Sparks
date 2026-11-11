@@ -96,6 +96,31 @@ Speculative decoding is exact against no drafter on the same weights: seeded rep
 
 With thinking on, most of a reply is reasoning, so code edits run near prose speed.
 
+## Prefill speed switches (since the first release)
+
+`run.sh` now enables expert-parallel routed experts, 8-bit prefill matmuls and several same-output kernel changes (listed with comments in `run.sh`). Measured with the engine's own benchmark, not through the API: a 16k-token cold prompt, both ranks, mean of 2 runs per row.
+
+| Build | Prefill, 16k cold prompt |
+|---|---|
+| First release switches | 626 tok/s |
+| + expert-parallel routed experts, 8-bit dense prefill projections | 694 tok/s |
+| + same-output kernel changes (ROT_W4, GU_MB, W8_M64) | 742 tok/s |
+| + 8-bit activations for the routed experts (GU_W8S=2, DOWN_W8S=1), with the host setting below | **820 tok/s** |
+
+The served prefill and time-to-first-token rows in the table above were measured on the first release and have not been re-run.
+
+**Decode cost.** Expert-parallel adds about 4 ms to each decode step (about 5%). The decode rows above predate it. With the drafter, at max effort with thinking on, a 40-prompt check measured 22.7 to 22.8 tok/s.
+
+**Quality.** The bit-changing switches were checked against the original model on 24 text windows: the original's top choice matches ours on 86.96% of tokens, against 87.10% for the first release (-0.14 points; tool-call text -0.27, prose -0.22, code and math unchanged). A served check of 40 prompts, 20 of them with tool definitions, found no extra loops, malformed tool calls or leaked tags, and the same tool use (19 of 20) as before.
+
+**Host setting (optional, recommended).** The kernel's background memory compaction can stall one node for about a second at the start of a long prompt. Disabling it on both nodes removed that stall in our runs:
+
+```sh
+sudo sysctl -w vm.compaction_proactiveness=0 vm.compact_unevictable_allowed=0 vm.watermark_boost_factor=0
+```
+
+This lasts until reboot. To restore the defaults: `sudo sysctl -w vm.compaction_proactiveness=20 vm.compact_unevictable_allowed=1 vm.watermark_boost_factor=15000`.
+
 Expect long turns on large builds. At max effort, GLM-5.3 can reason for 35,000 to 55,000 tokens before it writes a file, and the original does the same. In our end-to-end test, a 61 KB single-file page took 69 minutes through an agent harness.
 
 ## Features
