@@ -105,9 +105,14 @@ With thinking on, most of a reply is reasoning, so code edits run near prose spe
 | First release switches | 626 tok/s |
 | + expert-parallel routed experts, 8-bit dense prefill projections | 694 tok/s |
 | + same-output kernel changes (ROT_W4, GU_MB, W8_M64) | 742 tok/s |
-| + 8-bit activations for the routed experts (GU_W8S=2, DOWN_W8S=1), with the host setting below | **820 tok/s** |
+| + 8-bit activations for the routed experts (GU_W8S=2, DOWN_W8S=1), with the host setting below | 820 tok/s |
+| + same-output kernel and transport changes (TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM, INDEX_PIPE), NCCL on both RoCE ports | **899 tok/s** |
 
 The served prefill and time-to-first-token rows in the table above were measured on the first release and have not been re-run.
+
+The 899 row's switches do not change the model's output: each was checked bit-identical against the 820 build on the engine's quality gate. `INDEX_PIPE` uses about 1 GiB more GPU memory at 262k context.
+
+**Both RoCE ports for NCCL (optional, +0.6%).** `run.sh` gives NCCL the one RDMA device it discovers. If both QSFP ports are cabled between the Sparks, list both devices in `.env`, for example `NCCL_IB_HCA=rocep1s0f1,roceP2p1s0f1` (check the names with `ibv_devices` on each node).
 
 **Decode cost.** Expert-parallel adds about 4 ms to each decode step (about 5%). The decode rows above predate it. With the drafter, at max effort with thinking on, a 40-prompt check measured 22.7 to 22.8 tok/s.
 

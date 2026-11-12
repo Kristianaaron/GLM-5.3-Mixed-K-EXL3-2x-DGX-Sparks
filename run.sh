@@ -72,7 +72,8 @@ DOCKER_ARGS+=(
 #   PREFILL_W8A8=2  8-bit weights and activations for the dense prefill projections
 #   GU_W8S=2        8-bit activations for the routed experts' prefill gate/up (one scale a row)
 #   DOWN_W8S=1      8-bit activations for the routed experts' prefill down (one scale a row)
-# ROT_W4, GU_MB and W8_M64 are same-output kernel changes.
+# ROT_W4, GU_MB, W8_M64, TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM and INDEX_PIPE are
+# same-output changes (each checked bit-identical on the engine's quality gate).
 DOCKER_ARGS+=(
   -e TF_GLM53_MOE_NOALLOC=1
   -e TF_GLM53_RING_KEEP=1
@@ -93,6 +94,14 @@ DOCKER_ARGS+=(
   -e TF_GLM53_W8_M64=1
   -e TF_GLM53_GU_W8S=2
   -e TF_GLM53_DOWN_W8S=1
+  -e TF_GLM53_TOPK_FIT=1
+  -e TF_GLM53_MERGE2_FAST=1
+  -e TF_GLM53_PIECE_ROWS=1024
+  -e TF_GLM53_DN_EPI=1
+  -e TF_GLM53_ROT_DD=1
+  -e TF_GLM53_IQ_FOLD=1
+  -e TF_GLM53_GATHER_SUM=1
+  -e TF_GLM53_INDEX_PIPE=1
 )
 
 # GLM-5.3 runtime, cache, and serving environment from the release environment.
