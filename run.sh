@@ -67,11 +67,13 @@ DOCKER_ARGS+=(
 )
 
 # Speed switches added after the first release. Most keep the output bits exactly.
-# Five change bits slightly, inside a measured quality budget (see "Prefill speed switches" in the README):
+# Six change bits slightly, inside a measured quality budget (see "Prefill speed switches" in the README):
 #   MOE_EP=1        expert-parallel routed experts (each rank holds 128 whole experts)
 #   PREFILL_W8A8=2  8-bit weights and activations for the dense prefill projections
 #   GU_W8S=2        8-bit activations for the routed experts' prefill gate/up (one scale a row)
 #   DOWN_W8S=1      8-bit activations for the routed experts' prefill down (one scale a row)
+#   PREFILL_TOPK=1024  in prefill, each prompt token attends to the 1,024 keys the indexer ranks highest
+#                      (2,048 before); decode still uses 2,048
 # ROT_W4, GU_MB, W8_M64, TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM and INDEX_PIPE are
 # same-output changes (each checked bit-identical on the engine's quality gate).
 DOCKER_ARGS+=(
@@ -102,6 +104,7 @@ DOCKER_ARGS+=(
   -e TF_GLM53_IQ_FOLD=1
   -e TF_GLM53_GATHER_SUM=1
   -e TF_GLM53_INDEX_PIPE=1
+  -e TF_GLM53_PREFILL_TOPK=1024
 )
 
 # GLM-5.3 runtime, cache, and serving environment from the release environment.

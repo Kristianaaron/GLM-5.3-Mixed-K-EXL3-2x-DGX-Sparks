@@ -106,7 +106,8 @@ With thinking on, most of a reply is reasoning, so code edits run near prose spe
 | + expert-parallel routed experts, 8-bit dense prefill projections | 694 tok/s |
 | + same-output kernel changes (ROT_W4, GU_MB, W8_M64) | 742 tok/s |
 | + 8-bit activations for the routed experts (GU_W8S=2, DOWN_W8S=1), with the host setting below | 820 tok/s |
-| + same-output kernel and transport changes (TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM, INDEX_PIPE), NCCL on both RoCE ports | **899 tok/s** |
+| + same-output kernel and transport changes (TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM, INDEX_PIPE), NCCL on both RoCE ports | 899 tok/s |
+| + 1,024 prefill keys per prompt token (PREFILL_TOPK=1024; decode keeps 2,048) | **1,008 tok/s** |
 
 The served prefill and time-to-first-token rows in the table above were measured on the first release and have not been re-run.
 
@@ -116,7 +117,7 @@ The 899 row's switches do not change the model's output: each was checked bit-id
 
 **Decode cost.** Expert-parallel adds about 4 ms to each decode step (about 5%). The decode rows above predate it. With the drafter, at max effort with thinking on, a 40-prompt check measured 22.7 to 22.8 tok/s.
 
-**Quality.** The bit-changing switches were checked against the original model on 24 text windows: the original's top choice matches ours on 86.96% of tokens, against 87.10% for the first release (-0.14 points; tool-call text -0.27, prose -0.22, code and math unchanged). A served check of 40 prompts, 20 of them with tool definitions, found no extra loops, malformed tool calls or leaked tags, and the same tool use (19 of 20) as before.
+**Quality.** The bit-changing switches were checked against the original model on 24 text windows: the original's top choice matches ours on 86.86% of tokens, against 87.10% for the first release (-0.23 points). Before `PREFILL_TOPK` it was 86.96% (-0.14; tool-call text -0.27, prose -0.22, code and math unchanged); `PREFILL_TOPK=1024` adds -0.09 on all tokens (tool-call text -0.23, math -0.24, code -0.22). A served check of 40 prompts, 20 of them with tool definitions, found no extra loops, malformed tool calls or leaked tags, and the same tool use (19 of 20) as before, with 1,024 prefill keys as well. Planted facts at 16k, 64k and 120k tokens were all retrieved (3 of 3 at each length). To keep 2,048 prefill keys, remove the `PREFILL_TOPK` line from `run.sh` (899 tok/s).
 
 **Host setting (optional, recommended).** The kernel's background memory compaction can stall one node for about a second at the start of a long prompt. Disabling it on both nodes removed that stall in our runs:
 
