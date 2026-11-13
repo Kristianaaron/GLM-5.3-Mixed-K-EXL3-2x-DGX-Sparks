@@ -2,6 +2,10 @@
 
 This repository provides a public run recipe for serving **GLM-5.3 full** across two NVIDIA DGX Sparks. This is the full model, not GLM-5.3-Flash. The Sparks are joined by their 200 GbE ports. Rank 0 serves the local OpenAI-compatible API on loopback; rank 1 joins the model-parallel run.
 
+![Prefill on a 16k cold prompt: 626 tok/s at launch, 1,046 tok/s now](docs/glm53-prefill-1046.jpg)
+
+**Update:** prefill on a 16k cold prompt is now **1,046 tok/s**, up from 626 at the first release (same engine benchmark). See [Prefill speed switches](#prefill-speed-switches-since-the-first-release) for each step and its quality cost.
+
 ## Get the files
 
 Download the GLM-5.3 weights into a local directory represented by `[Krishando/GLM-5.3-mixed-K-EXL3](https://huggingface.co/Krishando/GLM-5.3-mixed-K-EXL3)` and the `RedHatAI/GLM-5.3-speculator.dspark` drafter into a local directory. Check the weight and drafter repositories for their terms before downloading. Clone the public TensorFold engine into a local directory represented by `[Kristianaaron/TensorFold](https://github.com/Kristianaaron/TensorFold)`.
