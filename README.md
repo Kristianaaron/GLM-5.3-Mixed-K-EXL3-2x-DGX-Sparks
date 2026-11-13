@@ -107,15 +107,18 @@ With thinking on, most of a reply is reasoning, so code edits run near prose spe
 | + same-output kernel changes (ROT_W4, GU_MB, W8_M64) | 742 tok/s |
 | + 8-bit activations for the routed experts (GU_W8S=2, DOWN_W8S=1), with the host setting below | 820 tok/s |
 | + same-output kernel and transport changes (TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM, INDEX_PIPE), NCCL on both RoCE ports | 899 tok/s |
-| + 1,024 prefill keys per prompt token (PREFILL_TOPK=1024; decode keeps 2,048) | **1,008 tok/s** |
+| + 1,024 prefill keys per prompt token (PREFILL_TOPK=1024; decode keeps 2,048) | 1,008 tok/s |
+| + 8,192-row prefill chunks and expert batches (CHUNK_ROWS=8192, EXPERT_ROWS_ADAPT=8192, PARK_HOLE=1) | **1,046 tok/s** |
 
 The served prefill and time-to-first-token rows in the table above were measured on the first release and have not been re-run.
 
 The 899 row's switches do not change the model's output: each was checked bit-identical against the 820 build on the engine's quality gate. `INDEX_PIPE` uses about 1 GiB more GPU memory at 262k context.
 
+The 1,046 row's chunk and batch sizes do not change the output either (bit-identical on the quality gate). The larger expert batch borrows the unused tail of the KV cache; `PARK_HOLE=1` makes it skip the rows the long-context tier keeps there, so it fits at 262k context. Prompts past about 155k tokens fall back to the smaller batch. Served at 262k with the drafter, planted facts at 14k, 57k, 108k, 173k and 224k tokens were all retrieved (3 of 3 at each length), and the 108k prompt answered in 125.5 s against 139 to 151 s with the 1,008 settings. Rank 1 keeps about 4.2 GiB free at steady state.
+
 **Both RoCE ports for NCCL (optional, +0.6%).** `run.sh` gives NCCL the one RDMA device it discovers. If both QSFP ports are cabled between the Sparks, list both devices in `.env`, for example `NCCL_IB_HCA=rocep1s0f1,roceP2p1s0f1` (check the names with `ibv_devices` on each node).
 
-**Decode cost.** Expert-parallel adds about 4 ms to each decode step (about 5%). The decode rows above predate it. With the drafter, at max effort with thinking on, a 40-prompt check measured 22.7 to 22.8 tok/s.
+**Decode cost.** Expert-parallel adds about 4 ms to each decode step (about 5%). The decode rows above predate it. With the drafter, at max effort with thinking on, a 40-prompt check measured 22.7 to 22.8 tok/s. Greedy prose with thinking off holds 16 to 17.5 tok/s from 2k to 182k tokens of context.
 
 **Quality.** The bit-changing switches were checked against the original model on 24 text windows: the original's top choice matches ours on 86.86% of tokens, against 87.10% for the first release (-0.23 points). Before `PREFILL_TOPK` it was 86.96% (-0.14; tool-call text -0.27, prose -0.22, code and math unchanged); `PREFILL_TOPK=1024` adds -0.09 on all tokens (tool-call text -0.23, math -0.24, code -0.22). A served check of 40 prompts, 20 of them with tool definitions, found no extra loops, malformed tool calls or leaked tags, and the same tool use (19 of 20) as before, with 1,024 prefill keys as well. Planted facts at 16k, 64k and 120k tokens were all retrieved (3 of 3 at each length). To keep 2,048 prefill keys, remove the `PREFILL_TOPK` line from `run.sh` (899 tok/s).
 

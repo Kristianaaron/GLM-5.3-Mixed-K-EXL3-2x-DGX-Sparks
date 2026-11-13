@@ -76,6 +76,8 @@ DOCKER_ARGS+=(
 #                      (2,048 before); decode still uses 2,048
 # ROT_W4, GU_MB, W8_M64, TOPK_FIT, MERGE2_FAST, PIECE_ROWS, DN_EPI, ROT_DD, IQ_FOLD, GATHER_SUM and INDEX_PIPE are
 # same-output changes (each checked bit-identical on the engine's quality gate).
+# CHUNK_ROWS=8192 with EXPERT_ROWS_ADAPT=8192 is same-output too. PARK_HOLE=1 lets that 8,192-row expert batch
+# borrow the unused KV-cache tail beside the long-context tier's side rows, so it fits at 262k context.
 DOCKER_ARGS+=(
   -e TF_GLM53_MOE_NOALLOC=1
   -e TF_GLM53_RING_KEEP=1
@@ -115,7 +117,7 @@ DOCKER_ARGS+=(
   -e TF_GLM53_SCRATCH_OVERLAY=1
   -e TF_GLM53_INDEX_ROWS=16
   -e TF_GLM53_PIECE_PIPE=1
-  -e TF_GLM53_CHUNK_ROWS=4096
+  -e TF_GLM53_CHUNK_ROWS=8192
   -e TF_GLM53_RUNTIME_RESERVE_MIB=2560
   -e TF_GLM53_GRAPH_MIB=32
   -e TF_GLM53_DRAFTER_SHARE=1
@@ -132,7 +134,8 @@ DOCKER_ARGS+=(
   -e TF_GLM53_PREP_FUSE=1
   -e TF_GLM53_MOE_POST=1
   -e "TF_ROCE=$ROCE"
-  -e TF_GLM53_EXPERT_ROWS_ADAPT=4096
+  -e TF_GLM53_EXPERT_ROWS_ADAPT=8192
+  -e TF_GLM53_PARK_HOLE=1
   -e TF_GLM53_DRAFT_CHANCES=1
   -e TF_GLM53_GRAPH_BUDGET_MIB=1024
   -e TF_GLM53_SERVE_MARGIN_MIB=512
